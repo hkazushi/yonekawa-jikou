@@ -99,6 +99,7 @@ export const places = [
     name: '小山ヤード',
     en: 'OYAMA YARD',
     address: '〒329-0203\n栃木県小山市西黒田666-1',
-    map: 'https://www.google.com/maps?q=' + encodeURIComponent('栃木県小山市西黒田666-1') + '&z=15&output=embed',
+    // 「maps?q=住所&output=embed」を開いたときの転送先（住所の検索結果を埋め込む形式）
+    map: 'https://www.google.com/maps/embed?origin=mfe&pb=!1m3!2m1!1z5qCD5pyo55yM5bCP5bGx5biC6KW_6buS55SwNjY2LTE!6i15',
   },
 ];

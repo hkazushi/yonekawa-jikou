@@ -55,12 +55,16 @@ function seed() {
 
 const text = (v) => (typeof v === 'string' ? v.trim() : '');
 const len = (s) => [...s].length;
-const staffOrder = (a, b) => (a.sort || 0) - (b.sort || 0) || a.created_at.localeCompare(b.created_at);
-// スタッフは並び順、それ以外は日付の新しい順
+// 作成日時は +09:00 表記と Z 表記が混ざるので、文字列ではなく時刻として比べる
+const made = (p) => Date.parse(p.created_at) || 0;
+const staffOrder = (a, b) => (a.sort || 0) - (b.sort || 0) || made(a) - made(b);
+// スタッフは並び順、それ以外は日付の新しい順。
+// 種類が違うもの同士は種類で分ける（比べ方が混ざると並びが崩れる。2026-11-17 にスタッフの並べ替えが効かなくなった）
 const sorted = (posts) =>
-  [...posts].sort((a, b) =>
-    a.type === 'staff' && b.type === 'staff' ? staffOrder(a, b) : b.date.localeCompare(a.date) || b.created_at.localeCompare(a.created_at),
-  );
+  [...posts].sort((a, b) => {
+    if (a.type !== b.type) return a.type.localeCompare(b.type);
+    return a.type === 'staff' ? staffOrder(a, b) : b.date.localeCompare(a.date) || made(b) - made(a);
+  });
 
 function imageExt(buf) {
   if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpg';

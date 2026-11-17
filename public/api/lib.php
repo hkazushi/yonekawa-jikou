@@ -136,13 +136,19 @@ function seed_posts(): array
     ];
 }
 
-// スタッフは並び順、それ以外は日付の新しい順
+// スタッフは並び順、それ以外は日付の新しい順。
+// 種類が違うもの同士は種類で分ける（比べ方が混ざると並びが崩れる。api/_logic.js と揃える）
 function all_posts(): array
 {
     $posts = read_json('posts', seed_posts());
-    usort($posts, fn($a, $b) => $a['type'] === 'staff' && $b['type'] === 'staff'
-        ? [$a['sort'] ?? 0, $a['created_at']] <=> [$b['sort'] ?? 0, $b['created_at']]
-        : [$b['date'], $b['created_at']] <=> [$a['date'], $a['created_at']]);
+    usort($posts, function ($a, $b) {
+        if ($a['type'] !== $b['type']) {
+            return strcmp($a['type'], $b['type']);
+        }
+        return $a['type'] === 'staff'
+            ? [$a['sort'] ?? 0, $a['created_at']] <=> [$b['sort'] ?? 0, $b['created_at']]
+            : [$b['date'], $b['created_at']] <=> [$a['date'], $a['created_at']];
+    });
     return $posts;
 }
 

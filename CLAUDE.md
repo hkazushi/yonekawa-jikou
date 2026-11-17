@@ -57,7 +57,7 @@ npm audit --omit=dev
 TypeScript も lint も無いので、検証はビルドと実表示。`next dev` では PHP が動かないので、**`out/` を Apache + PHP で確認する**: `comvace-work/.claude/launch.json` の `yonekawa-jikou`（Docker の `php:8.3-apache` / http://localhost:4330）。データは `yj-data/` を使う。**ビルドしたらコンテナを起動し直す**（`out/` を作り直すとマウントが外れる）。
 
 - 375 / 768 / 1440px で確認する。`document.documentElement.scrollWidth` が画面幅を超えないこと
-- 管理画面や API を触ったら、ログイン → 投稿 → 公開ページに反映 → 編集 → 削除 → ログアウトを通す
+- 管理画面や API を触ったら、ログイン → 投稿（**写真のアップロードを含む**）→ 公開ページに反映 → 編集 → スタッフの並べ替え → 削除 → ログアウトを、**ローカル（PHP）と確認用URL（Vercel）の両方**で通す。API だけでなく画面のボタンを実際に押す
 - ローカルのログイン情報は `.env.local` の `ADMIN_USER` / `ADMIN_PASSWORD`（テスト用）。`yj-data/config.php` にはそのハッシュが入っている
 - API の動作を変えたら **`public/api/index.php` と `api/_logic.js` の両方**を直す。`api/` はローカルでは動かない（Blob のトークンが無い）ので、`@vercel/blob` をメモリ実装に差し替えて `http.createServer(require('./api/store.js'))` を叩くか、push して確認用URLに `curl` する（`X-YJ-Request: 1` ヘッダーが必要）
 - 全体のスクリーンショットはヘッドレス Chrome が早い（**幅は500px未満にできない**ので、スマホ幅の確認は Browser pane で行う）: `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --virtual-time-budget=6000 --window-size=1440,6700 --screenshot=out.png http://localhost:4330/`
@@ -111,6 +111,10 @@ docker run --rm php:8.3-cli php -r 'echo password_hash("ここにパスワード
 - **`vercel.json` の `trailingSlash: true` で `/api/store` が 308 転送される（2026-11-17）**: 画面からは最初から `/api/store/` を呼ぶ
 - **`@vercel/blob` を入れると `npm audit` が high を4件出す（2026-11-17）**: 間接依存の `zod` が古い。`package.json` の `overrides` で `zod ^4.6.6` に固定して 0 件にしている。外さない
 - **zsh で `echo "$JSON"` すると `\n` が改行に化けて JSON が壊れる／`for x in $VAR` が分割されない（2026-11-17）**: API の応答は変数に入れず、`curl ... | python3 -c` に直接つなぐ。ID の列は `| while read id` で回す
+- **削除ボタンを押しても何も起きない（2026-11-17）**: `window.confirm` は Claude のアプリ内ブラウザなど埋め込み環境では出ずに「いいえ」扱いになる。確認は画面の中に出す（`EditPost.js` の `.a-confirm`）。`confirm` / `alert` / `prompt` を使わない
+- **スタッフの並べ替えが効かない／一覧の順が崩れる（2026-11-17）**: 全種類の投稿を1つの比較関数で並べ、「スタッフ同士は並び順、それ以外は日付」と分けていたため、比べ方が一貫せず結果が崩れた。**種類が違うもの同士は種類で分ける**（`api/_logic.js` の `sorted`、`lib.php` の `all_posts`）。作成日時は `+09:00` と `Z` が混ざるので、JS 側は文字列でなく時刻で比べる
+- **`/#access` に飛ぶと手前で止まる（2026-11-17）**: 販売車両・新着情報が後から読み込まれて高さが変わるため。`Motion.js` が読み込みの間だけ位置を合わせ直している
+- **Google マップの `maps?q=住所&output=embed` は転送される（2026-11-17）**: ヘッドレスでは読み込み中のままに見えた。転送先の `maps/embed?origin=mfe&pb=...` を直接使っている
 - **React 19 のフォーム自動リセット、Browser pane で `requestAnimationFrame` が止まる件**は `../yamazaki-kougyo/CLAUDE.md` と同じ（`onSubmit` + `preventDefault`、スライドは `scrollLeft` 直指定かヘッドレスで確認）
 
 ---

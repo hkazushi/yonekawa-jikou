@@ -25,5 +25,31 @@ export default function Motion() {
     return () => io.disconnect();
   }, [pathname]);
 
+  // /#access のように場所を指定して開いたとき、販売車両や新着情報が後から読み込まれて
+  // 高さが変わり、手前で止まってしまう。読み込みが落ち着くまで位置を合わせ直す（操作されたらやめる）
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id) return undefined;
+    let active = true;
+    const stop = () => {
+      active = false;
+    };
+    const align = () => {
+      const el = active && document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'instant', block: 'start' });
+    };
+    const ro = new ResizeObserver(align);
+    ro.observe(document.body);
+    const timer = setTimeout(stop, 4000);
+    const events = ['wheel', 'touchstart', 'keydown', 'mousedown'];
+    events.forEach((e) => window.addEventListener(e, stop, { passive: true, once: true }));
+    return () => {
+      stop();
+      ro.disconnect();
+      clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, stop));
+    };
+  }, [pathname]);
+
   return null;
 }
