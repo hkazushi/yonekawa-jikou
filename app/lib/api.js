@@ -4,7 +4,8 @@ import { ApiError, REVIEW } from './api-error';
 
 export { ApiError };
 
-const ENDPOINT = REVIEW ? '/api/store' : '/api/index.php';
+// vercel.json の trailingSlash で /api/store は /api/store/ に転送されるので、最初から / 付きで呼ぶ
+const ENDPOINT = REVIEW ? '/api/store/' : '/api/index.php';
 
 export async function api(action, { params, body, file } = {}) {
   const query = new URLSearchParams({ action, ...params });

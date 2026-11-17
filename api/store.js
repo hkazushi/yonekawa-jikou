@@ -1,26 +1,36 @@
 // 確認用（Vercel）の保存 API。投稿と画像を Vercel Blob に置くので、保存した内容は全員に反映される。
 // 本番（レンタルサーバー）では使わない。そちらは public/api/index.php がファイルに保存する
-const { put, get, del } = require('@vercel/blob');
+const crypto = require('node:crypto');
+const { put, list, del } = require('@vercel/blob');
 const { handle, ApiError, MAX_UPLOAD } = require('./_logic');
 
-const POSTS = 'data/posts.json';
+// 投稿データは「保存のたびに新しいファイル」を作り、一覧から一番新しいものを読む。
+// 同じファイルを上書きすると、保存直後の数秒間は古い内容が返ってきて、続けて保存した投稿が消える（2026-11-17 に実際に起きた）
+const PREFIX = 'data/posts-';
+const KEEP = 5;
+
+async function versions() {
+  const { blobs } = await list({ prefix: 'data/', limit: 1000 });
+  return blobs.filter((b) => b.pathname.startsWith(PREFIX)).sort((a, b) => b.pathname.localeCompare(a.pathname));
+}
 
 const store = {
   async readPosts() {
-    // CDN のキャッシュを通すと保存直後に古い内容が返るので、必ず元データを読む
-    const res = await get(POSTS, { access: 'public', useCache: false });
-    if (!res || res.statusCode !== 200) return null;
-    const data = JSON.parse(await new Response(res.stream).text());
+    const [latest] = await versions();
+    if (!latest) return null;
+    const res = await fetch(latest.url, { cache: 'no-store' });
+    if (!res.ok) throw new ApiError('データファイルを読み込めません。', 500);
+    const data = await res.json();
     if (!Array.isArray(data)) throw new ApiError('データファイルを読み込めません。', 500);
     return data;
   },
   async writePosts(posts) {
-    await put(POSTS, JSON.stringify(posts, null, 2), {
-      access: 'public',
-      allowOverwrite: true,
-      contentType: 'application/json; charset=utf-8',
-      cacheControlMaxAge: 60,
-    });
+    // ファイル名は時刻順に並ぶようにする（13桁のミリ秒 + 重複よけ）
+    const name = `${PREFIX}${String(Date.now()).padStart(13, '0')}-${crypto.randomBytes(4).toString('hex')}.json`;
+    await put(name, JSON.stringify(posts, null, 2), { access: 'public', contentType: 'application/json; charset=utf-8' });
+    // 古い版は直近の数件だけ残して消す（失敗しても保存は成立させる）
+    const old = (await versions().catch(() => [])).slice(KEEP).map((b) => b.url);
+    if (old.length) await del(old).catch(() => {});
   },
   async putImage(buffer, name) {
     const ext = name.split('.').pop();
