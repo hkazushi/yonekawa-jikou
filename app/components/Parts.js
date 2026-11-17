@@ -140,7 +140,7 @@ export function InstaBand() {
       <span className="en">INSTAGRAM</span>
       <strong>
         米川自工 公式インスタグラム
-        <small>@yonekawajikou　入庫車両や日々の様子を発信しています</small>
+        <small>@yonekawajikou</small>
       </strong>
       <span className="follow">
         フォローする
