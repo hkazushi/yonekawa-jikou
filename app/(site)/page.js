@@ -23,9 +23,6 @@ export default function Home() {
           </h1>
           <p className="hero-tag">{company.tagline}</p>
         </div>
-        <span className="hero-scroll en" aria-hidden="true">
-          SCROLL
-        </span>
       </section>
 
       <Link className="stock-banner" href="/vehicles/">

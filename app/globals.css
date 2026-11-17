@@ -124,21 +124,24 @@ a:hover > .arrow { width: 48px; }
 .hero-copy h1 { margin-top: clamp(16px, 2vw, 28px); font-size: clamp(22px, 3vw, 42px); font-weight: 900; line-height: 1.45; letter-spacing: 0.06em; }
 .hero-copy h1 span { display: inline-block; }
 .hero-tag { display: inline-block; margin-top: 14px; padding: 4px 18px; background: var(--red); font-size: clamp(12px, 1.2vw, 15px); font-weight: 900; letter-spacing: 0.2em; transform: skewX(-12deg); }
-.hero-scroll { position: absolute; z-index: 1; right: clamp(14px, 2.4vw, 36px); bottom: 0; display: flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: 0.3em; writing-mode: vertical-rl; }
-.hero-scroll::after { content: ''; width: 1px; height: 72px; background: linear-gradient(var(--white) 50%, rgba(255, 255, 255, 0.25) 50%); background-size: 100% 200%; animation: scroll-line 1.8s linear infinite; }
-@keyframes scroll-line { from { background-position: 0 100%; } to { background-position: 0 -100%; } }
 
 /* 動画の下のバナー → 販売車両一覧 */
 .stock-banner { position: relative; display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: clamp(16px, 3vw, 48px); min-height: clamp(120px, 14vw, 200px); padding: 18px 36% 18px var(--gutter); background: var(--red); color: var(--white); overflow: hidden; }
-.stock-banner > img { position: absolute; top: 0; right: 0; width: 34%; height: 100%; object-fit: cover; clip-path: polygon(22% 0, 100% 0, 100% 100%, 0 100%); transition: scale 0.6s; }
-.stock-banner:hover > img { scale: 1.05; }
+.stock-banner > img { position: absolute; top: 0; right: 0; width: 34%; height: 100%; object-fit: cover; clip-path: polygon(22% 0, 100% 0, 100% 100%, 0 100%); transform-origin: 70% 60%; animation: banner-zoom 9s ease-in-out infinite alternate; }
+/* バナーの動き: 光が斜めに走る / 写真がゆっくり寄る / 矢印が脈打ちながら右へ誘う */
+.stock-banner::before { content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 16%; background: linear-gradient(100deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0)); transform: translateX(-160%) skewX(-22deg); animation: banner-shine 3.4s ease-in-out infinite; pointer-events: none; }
+@keyframes banner-shine { 0% { transform: translateX(-160%) skewX(-22deg); } 60%, 100% { transform: translateX(760%) skewX(-22deg); } }
+@keyframes banner-zoom { from { transform: scale(1); } to { transform: scale(1.14); } }
+@keyframes banner-ring { 0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.65); } 70%, 100% { box-shadow: 0 0 0 clamp(14px, 1.8vw, 26px) rgba(255, 255, 255, 0); } }
+@keyframes banner-arrow { 0%, 100% { translate: 0 0; } 50% { translate: 40% 0; } }
+@keyframes banner-arrow-head { 0%, 100% { translate: 0 -50%; } 50% { translate: 80% -50%; } }
 .stock-banner > :not(img) { position: relative; z-index: 1; }
-.stock-banner .en { font-size: clamp(44px, 8vw, 116px); font-style: italic; font-weight: 800; line-height: 0.9; letter-spacing: 0; white-space: nowrap; }
+.stock-banner .en { font-size: clamp(40px, 6.2vw, 104px); font-style: italic; font-weight: 800; line-height: 0.9; letter-spacing: 0; white-space: nowrap; }
 .stock-banner strong { font-size: clamp(18px, 2.2vw, 30px); white-space: nowrap; font-weight: 900; letter-spacing: 0.08em; line-height: 1.4; }
 .stock-banner small { display: block; font-size: clamp(11px, 1.1vw, 14px); font-weight: 700; letter-spacing: 0.08em; opacity: 0.9; }
-.stock-banner .go { position: relative; justify-self: start; width: clamp(52px, 6vw, 84px); aspect-ratio: 1; border: 2px solid var(--white); border-radius: 50%; transition: background 0.25s, translate 0.25s; }
-.stock-banner .go::before { content: ''; position: absolute; left: 28%; right: 28%; top: 50%; height: 2px; background: currentColor; }
-.stock-banner .go::after { content: ''; position: absolute; right: 28%; top: 50%; width: 22%; aspect-ratio: 1; border-top: 2px solid currentColor; border-right: 2px solid currentColor; translate: 0 -50%; rotate: 45deg; }
+.stock-banner .go { position: relative; justify-self: start; width: clamp(52px, 6vw, 84px); aspect-ratio: 1; border: 2px solid var(--white); border-radius: 50%; transition: background 0.25s, translate 0.25s; animation: banner-ring 1.7s ease-out infinite; }
+.stock-banner .go::before { content: ''; position: absolute; left: 28%; right: 28%; top: 50%; height: 2px; background: currentColor; animation: banner-arrow 1.7s ease-in-out infinite; }
+.stock-banner .go::after { content: ''; position: absolute; right: 28%; top: 50%; width: 22%; aspect-ratio: 1; border-top: 2px solid currentColor; border-right: 2px solid currentColor; translate: 0 -50%; rotate: 45deg; animation: banner-arrow-head 1.7s ease-in-out infinite; }
 .stock-banner:hover .go { background: var(--white); color: var(--red); translate: 8px 0; }
 
 /* 横に流れる英字 */
@@ -321,7 +324,7 @@ a:hover > .arrow { width: 48px; }
 .motion .reveal.in { opacity: 1; translate: 0 0; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .marquee div, .hero-scroll::after { animation: none; }
+  .marquee div, .stock-banner::before, .stock-banner > img, .stock-banner .go, .stock-banner .go::before, .stock-banner .go::after { animation: none; }
   * { transition: none !important; }
 }
 
@@ -336,7 +339,6 @@ a:hover > .arrow { width: 48px; }
   .logo small { font-size: 8px; letter-spacing: 0.02em; }
   .stock-banner { grid-template-columns: minmax(0, 1fr) auto; }
   .stock-banner .en { grid-column: 1 / -1; margin-bottom: -8px; }
-  .hero-scroll { display: none; }
   .page-head { background: linear-gradient(105deg, var(--ink) 0 84%, var(--red) 84%); }
   .split, .news-row, .access-grid { grid-template-columns: minmax(0, 1fr); }
   .split-photo { order: -1; }
