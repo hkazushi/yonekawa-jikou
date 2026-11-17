@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+.data/
+.env*
+!.env.example
+.vercel
+.DS_Store
+# 公開リポジトリなので、打ち合わせ記録と内部メモはローカルのみ
+meetings/
+notes/
+
+# ローカル検証用のデータ（本番はサーバーの public_html の隣）
+yj-data/
