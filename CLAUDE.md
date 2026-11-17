@@ -6,7 +6,7 @@
 参考サイト: https://www.frontierx.net/ （トップの構成）／ https://www.yonekawakogyo.jp/ ／ https://hokuyotransporter.co.jp/ ／ https://www.kuriyama-truck.com/trucks/list/ （販売車両）
 素材: Google Drive「HP画像」（`meetings/2026-11-17.md` 参照）
 GitHub: https://github.com/hkazushi/yonekawa-jikou （**Public**。2026-11-17 にユーザーが作成し、反映を指示）
-**確認用（Vercel）**: https://yonekawa-jikou-nine.vercel.app （Vercel の `hkazushi's projects`／プロジェクト名 `yonekawa-jikou`。2026-11-17 作成）。`main` への push で自動デプロイ。PHP が動かないので確認用ビルドになり、**投稿・編集は見ている人のブラウザ（localStorage）にだけ保存され、ほかの人には見えない**。noindex。本当の保存（全員に反映）は PHP が動くサーバーに置いたときだけ
+**確認用（Vercel）**: https://yonekawa-jikou-nine.vercel.app （Vercel の `hkazushi's projects`／プロジェクト名 `yonekawa-jikou`。2026-11-17 作成）。`main` への push で自動デプロイ。noindex。**管理画面はパスワード無しで、保存した内容は全員に反映される**（Vercel Blob の `yonekawa-jikou-blob` に保存。2026-11-17 の指示「現状は Vercel 内、今後はレンタルサーバー」）
 
 ## 技術構成
 
@@ -16,7 +16,7 @@ GitHub: https://github.com/hkazushi/yonekawa-jikou （**Public**。2026-11-17 �
 - 保存先: 公開フォルダの外の `yj-data/`（`public_html` の隣）。デプロイで上書きしても消えない
 - ログイン: `yj-data/config.php` の1アカウント + PHP セッション
 - **確認段階はパスワード無し**（2026-11-17 の指示）: `yj-data/config.php` の `'open_login' => true` で、ログイン画面が「パスワードなしで入る」ボタンだけになる。**本番公開の前に必ず `false` に戻す**（誰でも投稿・削除できてしまう）。ローカルの `yj-data/config.php` は `true` にしてある
-- 確認用ビルド（`NEXT_PUBLIC_REVIEW=1`。Vercel では自動）: PHP の代わりに `app/lib/review.js` がブラウザ内（localStorage）で動く。ログイン不要、noindex
+- 確認用ビルド（`NEXT_PUBLIC_REVIEW=1`。Vercel では自動）: PHP の代わりに **`api/store.js`（Vercel の関数）が Vercel Blob に保存**する。ログイン無し、noindex。`vercel.json` で「静的書き出し（`out/`）+ `api/` の関数」として配信している。レンタルサーバーに移したら `api/` と `vercel.json` は使われない（`out/` だけ上げる）
 
 ### ディレクトリ
 
@@ -24,7 +24,8 @@ GitHub: https://github.com/hkazushi/yonekawa-jikou （**Public**。2026-11-17 �
 |---|---|
 | `app/lib/content.js` | サイトの文言・会社情報・業務内容・保有車両・アクセス。**文言の修正はまずここ** |
 | `app/lib/vehicle.js` | 販売車両の項目（選択肢、表示の整形）。`public/api/index.php` の `VEHICLE_*` と揃える |
-| `app/lib/api.js` | PHP API の呼び出し |
+| `app/lib/api.js` | API の呼び出し。本番は `/api/index.php`（PHP）、確認用は `/api/store/`（Vercel） |
+| `api/store.js` `api/_logic.js` | 確認用（Vercel）の保存 API。`_logic.js` が中身（PHP と同じ検証）、`store.js` が Vercel Blob への読み書き |
 | `app/components/Posts.js` | 販売車両・スタッフ・新着情報の読み込み（ブラウザから API を呼ぶ） |
 | `app/(site)/` | 公開ページ（`/` `/company` `/service` `/fleet` `/staff` `/vehicles` `/vehicles/detail/?id=` `/news` `/news/detail/?id=`）。アクセスはトップ内（`/#access`）、様式ダウンロードは会社概要内 |
 | `app/admin/` | 管理画面。`PostForm.js` が3種類のフォーム、`Photos.js` が写真の追加・並べ替え。権限チェックは PHP 側で毎回行う |
@@ -58,7 +59,7 @@ TypeScript も lint も無いので、検証はビルドと実表示。`next dev
 - 375 / 768 / 1440px で確認する。`document.documentElement.scrollWidth` が画面幅を超えないこと
 - 管理画面や API を触ったら、ログイン → 投稿 → 公開ページに反映 → 編集 → 削除 → ログアウトを通す
 - ローカルのログイン情報は `.env.local` の `ADMIN_USER` / `ADMIN_PASSWORD`（テスト用）。`yj-data/config.php` にはそのハッシュが入っている
-- API の動作を変えたら `public/api/index.php` と `app/lib/review.js` の両方を直す。確認用は `NEXT_PUBLIC_REVIEW=1 npm run build` して `yonekawa-review-static`（http://localhost:4331）で見る
+- API の動作を変えたら **`public/api/index.php` と `api/_logic.js` の両方**を直す。`api/` はローカルでは動かない（Blob のトークンが無い）ので、`@vercel/blob` をメモリ実装に差し替えて `http.createServer(require('./api/store.js'))` を叩くか、push して確認用URLに `curl` する（`X-YJ-Request: 1` ヘッダーが必要）
 - 全体のスクリーンショットはヘッドレス Chrome が早い（**幅は500px未満にできない**ので、スマホ幅の確認は Browser pane で行う）: `"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --virtual-time-budget=6000 --window-size=1440,6700 --screenshot=out.png http://localhost:4330/`
 
 ---
@@ -106,6 +107,10 @@ docker run --rm php:8.3-cli php -r 'echo password_hash("ここにパスワード
 - **ffmpeg に `drawtext` が無い（2026-11-17）**: Homebrew 版は freetype 無しでビルドされている。コンタクトシートに時刻を焼き込めないので、`fps=12/<長さ>,tile=4x3` で等間隔に並べて位置から時刻を割り出す
 - **ヘッドレス Chrome で撮ると栗山自動車は 403、`.reveal` の要素が写らないことがある（2026-11-17）**: 前者は CloudFront がヘッドレスを弾くので、実ブラウザ（Claude in Chrome）で見る。後者は撮影上の問題で、実ブラウザでは表示される。コードの不具合と決めつけず Browser pane で `opacity` を確認する
 - **Vercel の作成が途中で止まる／URL が想像と違う（2026-11-17）**: Vercel MCP は別チーム（higashiyana's projects）につながっていて、山﨑工業などがある `hkazushi's projects` は操作できない。Chrome で `vercel.com/new/import?s=<GitHubのURL>` を開いて Deploy を押す。押すと2段階認証の6桁コードを求められるので、そこはユーザーに入力してもらう。`yonekawa-jikou.vercel.app` は他人が取得済みで、割り当ては `yonekawa-jikou-nine.vercel.app` になった。URL は推測せずダッシュボードで確認する
+- **Vercel Blob を同じ名前で上書きすると、保存直後に古い内容が返る（2026-11-17）**: `put(..., { allowOverwrite: true })` で `data/posts.json` を上書きし `get(..., { useCache: false })` で読む作りにしたら、保存の数秒後まで古い内容が返り、続けて3回保存して1件しか残らなかった（読んで→足して→書く、の元データが古いため）。**保存のたびに新しい名前のファイル（`data/posts-<時刻>-<乱数>.json`）を作り、`list()` で一番新しいものを読む**方式に直した。`list()` は保存直後から最新を返す。上書き方式に戻さない
+- **`vercel.json` の `trailingSlash: true` で `/api/store` が 308 転送される（2026-11-17）**: 画面からは最初から `/api/store/` を呼ぶ
+- **`@vercel/blob` を入れると `npm audit` が high を4件出す（2026-11-17）**: 間接依存の `zod` が古い。`package.json` の `overrides` で `zod ^4.6.6` に固定して 0 件にしている。外さない
+- **zsh で `echo "$JSON"` すると `\n` が改行に化けて JSON が壊れる／`for x in $VAR` が分割されない（2026-11-17）**: API の応答は変数に入れず、`curl ... | python3 -c` に直接つなぐ。ID の列は `| while read id` で回す
 - **React 19 のフォーム自動リセット、Browser pane で `requestAnimationFrame` が止まる件**は `../yamazaki-kougyo/CLAUDE.md` と同じ（`onSubmit` + `preventDefault`、スライドは `scrollLeft` 直指定かヘッドレスで確認）
 
 ---
