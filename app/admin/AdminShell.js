@@ -44,7 +44,7 @@ export default function AdminShell({ children }) {
       <main className="admin-main">
         {REVIEW && (
           <p className="a-review" role="note">
-            確認用の画面です。投稿や編集の内容は、お使いのブラウザにだけ保存されます。ほかの方には表示されません。
+            確認用のサイトです。保存した内容は、このサイトを見ている全員に反映されます。
           </p>
         )}
         {error && (
