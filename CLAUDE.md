@@ -6,7 +6,7 @@
 参考サイト: https://www.frontierx.net/ （トップの構成）／ https://www.yonekawakogyo.jp/ ／ https://hokuyotransporter.co.jp/ ／ https://www.kuriyama-truck.com/trucks/list/ （販売車両）
 素材: Google Drive「HP画像」（`meetings/2026-11-17.md` 参照）
 GitHub: https://github.com/hkazushi/yonekawa-jikou （**Public**。2026-11-17 にユーザーが作成し、反映を指示）
-Vercel（確認用URL）: 未作成
+**確認用（Vercel）**: https://yonekawa-jikou-nine.vercel.app （Vercel の `hkazushi's projects`／プロジェクト名 `yonekawa-jikou`。2026-11-17 作成）。`main` への push で自動デプロイ。PHP が動かないので確認用ビルドになり、**投稿・編集は見ている人のブラウザ（localStorage）にだけ保存され、ほかの人には見えない**。noindex。本当の保存（全員に反映）は PHP が動くサーバーに置いたときだけ
 
 ## 技術構成
 
@@ -105,6 +105,7 @@ docker run --rm php:8.3-cli php -r 'echo password_hash("ここにパスワード
 - **Drive コネクタで動画を落とせない（2026-11-17）**: `download_file_content` は base64 を会話に返すので、数十MBの動画や写真には使えない。ファイルIDは `search_files`（`title contains 'IMG_xxxx'`）で取り、Chrome で `https://drive.google.com/uc?id=<ID>&export=download` を開くと `~/Downloads` に落ちる（90MB の動画でも確認画面は出なかった）
 - **ffmpeg に `drawtext` が無い（2026-11-17）**: Homebrew 版は freetype 無しでビルドされている。コンタクトシートに時刻を焼き込めないので、`fps=12/<長さ>,tile=4x3` で等間隔に並べて位置から時刻を割り出す
 - **ヘッドレス Chrome で撮ると栗山自動車は 403、`.reveal` の要素が写らないことがある（2026-11-17）**: 前者は CloudFront がヘッドレスを弾くので、実ブラウザ（Claude in Chrome）で見る。後者は撮影上の問題で、実ブラウザでは表示される。コードの不具合と決めつけず Browser pane で `opacity` を確認する
+- **Vercel の作成が途中で止まる／URL が想像と違う（2026-11-17）**: Vercel MCP は別チーム（higashiyana's projects）につながっていて、山﨑工業などがある `hkazushi's projects` は操作できない。Chrome で `vercel.com/new/import?s=<GitHubのURL>` を開いて Deploy を押す。押すと2段階認証の6桁コードを求められるので、そこはユーザーに入力してもらう。`yonekawa-jikou.vercel.app` は他人が取得済みで、割り当ては `yonekawa-jikou-nine.vercel.app` になった。URL は推測せずダッシュボードで確認する
 - **React 19 のフォーム自動リセット、Browser pane で `requestAnimationFrame` が止まる件**は `../yamazaki-kougyo/CLAUDE.md` と同じ（`onSubmit` + `preventDefault`、スライドは `scrollLeft` 直指定かヘッドレスで確認）
 
 ---
