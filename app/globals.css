@@ -319,6 +319,12 @@ a:hover > .arrow { width: 48px; }
 .foot-nav a:hover { color: #ff5a5f; }
 .copyright { padding-block: 20px; border-top: 1px solid rgba(255, 255, 255, 0.16); color: #9aa0a6; font-size: 12px; }
 
+/* 404 */
+.not-found { display: grid; place-content: center; justify-items: center; gap: 12px; min-height: 100svh; padding: 40px var(--gutter); background: var(--ink); color: var(--white); text-align: center; }
+.not-found .en { font-size: clamp(96px, 22vw, 240px); font-style: italic; font-weight: 800; line-height: 0.85; color: var(--red); }
+.not-found h1 { font-size: clamp(20px, 3vw, 30px); font-weight: 900; }
+.not-found p { margin-bottom: 20px; color: #b9bec4; font-size: 15px; }
+
 /* 動き: JS が動いたときだけ隠す */
 .motion .reveal { opacity: 0; translate: 0 22px; transition: opacity 0.7s, translate 0.7s; }
 .motion .reveal.in { opacity: 1; translate: 0 0; }
@@ -434,6 +440,10 @@ a:hover > .arrow { width: 48px; }
 .a-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
 .a-actions > div { display: flex; flex-wrap: wrap; gap: 10px; }
 .a-danger-zone { margin-top: 18px; text-align: right; }
+.a-confirm { display: inline-block; max-width: 100%; padding: 14px 16px; border: 2px solid #b3392a; border-radius: 4px; background: #fff; text-align: left; }
+.a-confirm p { margin-bottom: 12px; font-size: 15px; font-weight: 700; }
+.a-confirm div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.a-btn.danger.solid { background: #b3392a; color: #fff; }
 .login-page { display: grid; place-items: center; min-height: 100svh; padding: 24px 16px; background: #0d0f12; }
 .login-box { width: min(400px, 100%); padding: 32px 26px; border-radius: 6px; background: #fff; color: #17181a; }
 .login-box .logo { display: block; margin-bottom: 8px; font-size: 20px; font-weight: 900; text-align: center; }

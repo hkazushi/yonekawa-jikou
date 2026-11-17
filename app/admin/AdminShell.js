@@ -36,17 +36,15 @@ export default function AdminShell({ children }) {
           <a href="/" target="_blank" rel="noreferrer">
             サイトを見る
           </a>
-          <button type="button" onClick={logout}>
-            ログアウト
-          </button>
+          {/* 確認用（Vercel）はログイン自体が無いので、押しても戻ってくるだけのボタンは出さない */}
+          {!REVIEW && (
+            <button type="button" onClick={logout}>
+              ログアウト
+            </button>
+          )}
         </nav>
       </header>
       <main className="admin-main">
-        {REVIEW && (
-          <p className="a-review" role="note">
-            確認用のサイトです。保存した内容は、このサイトを見ている全員に反映されます。
-          </p>
-        )}
         {error && (
           <p className="a-error" role="alert">
             {error}

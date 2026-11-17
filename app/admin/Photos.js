@@ -5,8 +5,21 @@ import { api } from '@/app/lib/api';
 
 const MAX_SIDE = 2000;
 
-// スマホの写真は大きいので、送る前にブラウザで縮小する
+const MAX_BYTES = 4 * 1024 * 1024;
+const OK_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+// スマホの写真は大きいので、送る前にブラウザで縮小する。
+// 縮小できない環境では、そのまま送れる形式・大きさならそのまま送る
 async function shrink(file) {
+  try {
+    return await resize(file);
+  } catch {
+    if (OK_TYPES.includes(file.type) && file.size <= MAX_BYTES) return file;
+    throw new Error('この画像は読み込めませんでした。JPEG か PNG の写真でお試しください。');
+  }
+}
+
+async function resize(file) {
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
@@ -25,9 +38,13 @@ export default function Photos({ images, setImages, single = false, note, onBusy
   const [over, setOver] = useState(false);
 
   async function add(fileList) {
-    const files = [...fileList].filter((f) => f.type.startsWith('image/')).slice(0, single ? 1 : 30);
-    if (!files.length) return;
+    const all = [...fileList];
+    const files = all.filter((f) => f.type.startsWith('image/')).slice(0, single ? 1 : 30 - images.length);
     onError('');
+    if (!files.length) {
+      if (all.length) onError(images.length >= 30 && !single ? '写真は30枚までです。' : '画像ファイル（JPEG / PNG など）を選んでください。');
+      return;
+    }
     setUploading(files.length);
     onBusy(true);
     for (const file of files) {
