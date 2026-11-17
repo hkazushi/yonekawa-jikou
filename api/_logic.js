@@ -14,6 +14,16 @@ const TEXTS = ['model', 'engine', 'shaken_until'];
 const MAX_POSTS = 300;
 const MAX_UPLOAD = 4 * 1024 * 1024;
 const IMAGE_URL = /^(\/img\/[\w.-]+|https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/uploads\/[a-f0-9]{32}\.(jpg|png|webp))$/;
+const INQUIRY_IMAGE = /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/inquiries\/[a-f0-9]{32}\.(jpg|png|webp)$/;
+const MAX_INQUIRIES = 300;
+
+// フォームの項目。public/api/lib.php の inquiry_labels と揃える
+const COMMON_FIELDS = ['name', 'phone', 'email'];
+const INQUIRY_FIELDS = {
+  estimate: [...COMMON_FIELDS, 'company', 'address', 'reply', 'car', 'maker', 'era', 'year', 'month', 'color', 'mileage', 'model', 'mission', 'state'],
+  contact: [...COMMON_FIELDS, 'message'],
+};
+const INQUIRY_LIMITS = { name: 100, phone: 30, email: 200, company: 200, address: 300, car: 100, maker: 100, color: 100, model: 100, state: 5000, message: 5000, reply: 20, era: 10, mission: 10 };
 
 class ApiError extends Error {
   constructor(message, status = 400) {
@@ -140,7 +150,36 @@ function normalize(input) {
   return { id, row: { type, title, body, images, data, published: input.published === true, date } };
 }
 
-// store: { readPosts(): Promise<array|null>, writePosts(array), putImage(buffer, name): Promise<url>, delImages(urls) }
+function normalizeInquiry(input) {
+  const kind = input.kind === 'estimate' ? 'estimate' : 'contact';
+  const row = { kind };
+  for (const key of INQUIRY_FIELDS[kind]) {
+    let value = text(String(input[key] ?? ''));
+    if (['year', 'month', 'mileage'].includes(key)) {
+      value = value.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)).replace(/[,，\s　]/g, '');
+      if (value !== '' && !/^\d{1,9}$/.test(value)) fail('年式・走行距離は半角数字で入力してください。');
+      value = value === '' ? '' : String(Number(value));
+    } else if (len(value) > INQUIRY_LIMITS[key]) {
+      fail('入力内容が長すぎます。');
+    }
+    row[key] = value;
+  }
+  if (!row.name) fail('お名前を入力してください。');
+  if (!row.phone) fail('電話番号を入力してください。');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) fail('メールアドレスを正しく入力してください。');
+  row.images = [];
+  if (kind === 'estimate') {
+    if (!['お電話', 'メールアドレス'].includes(row.reply)) fail('折り返し連絡方法を選択してください。');
+    if (!['', '令和', '平成', '昭和'].includes(row.era) || !['', 'AT', 'MT'].includes(row.mission)) fail('選択項目を選び直してください。');
+    if (row.month !== '' && (Number(row.month) < 1 || Number(row.month) > 12)) fail('年式の月は1〜12で入力してください。');
+    row.images = (Array.isArray(input.images) ? input.images : []).filter((u) => typeof u === 'string' && INQUIRY_IMAGE.test(u)).slice(0, 3);
+  } else if (!row.message) {
+    fail('お問合せ内容を入力してください。');
+  }
+  return row;
+}
+
+// store: { readPosts(), writePosts(array), readInquiries(), writeInquiries(array), putImage(buffer, name, folder): Promise<url>, delImages(urls) }
 async function handle({ action, method, query = {}, body }, store) {
   const posts = async () => (await store.readPosts()) ?? seed();
   const needPost = () => {
@@ -163,9 +202,57 @@ async function handle({ action, method, query = {}, body }, store) {
     case 'login_mode':
       return { open: true };
     case 'me':
+      return { ok: true, unread: ((await store.readInquiries()) ?? []).filter((q) => !q.read).length };
     case 'login':
     case 'logout':
       return { ok: true };
+    // 買取見積りフォームの写真（送信前に1枚ずつ受け取る）
+    case 'inquiry_upload': {
+      needPost();
+      if (!Buffer.isBuffer(body) || !body.length) fail('画像を受け取れませんでした。');
+      if (body.length > MAX_UPLOAD) fail('画像が大きすぎます。', 413);
+      const ext = imageExt(body);
+      if (!ext) fail('JPEG / PNG / WebP の画像を選んでください。', 415);
+      return { ref: await store.putImage(body, `${crypto.randomBytes(16).toString('hex')}.${ext}`, 'inquiries') };
+    }
+    // 買取見積りフォーム・お問合せフォームの受付
+    case 'contact': {
+      needPost();
+      const input = body && typeof body === 'object' ? body : {};
+      // ボット用の隠し項目。入っていたら保存せず成功に見せる
+      if (text(input.website)) return { ok: true };
+      const row = normalizeInquiry(input);
+      const list = (await store.readInquiries()) ?? [];
+      if (list.length >= MAX_INQUIRIES) fail('ただいま受付できません。お電話でお問い合わせください。', 503);
+      list.push({ ...row, id: crypto.randomBytes(16).toString('hex'), read: false, created_at: new Date().toISOString() });
+      await store.writeInquiries(list);
+      return { ok: true };
+    }
+    case 'inquiries': {
+      const list = (await store.readInquiries()) ?? [];
+      return { inquiries: [...list].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at)) };
+    }
+    case 'inquiry_read': {
+      needPost();
+      const list = (await store.readInquiries()) ?? [];
+      const found = list.find((q) => q.id === body?.id);
+      if (found) {
+        found.read = body.read === true;
+        await store.writeInquiries(list);
+      }
+      return { ok: true };
+    }
+    case 'inquiry_delete': {
+      needPost();
+      const list = (await store.readInquiries()) ?? [];
+      const i = list.findIndex((q) => q.id === body?.id);
+      if (i >= 0) {
+        const [gone] = list.splice(i, 1);
+        await store.writeInquiries(list);
+        await store.delImages(gone.images || []);
+      }
+      return { ok: true };
+    }
     case 'admin_posts':
       return { posts: sorted(await posts()).filter((p) => p.type === query.type) };
     case 'admin_post': {

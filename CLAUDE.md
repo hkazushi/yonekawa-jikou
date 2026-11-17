@@ -6,13 +6,14 @@
 参考サイト: https://www.frontierx.net/ （トップの構成）／ https://www.yonekawakogyo.jp/ ／ https://hokuyotransporter.co.jp/ ／ https://www.kuriyama-truck.com/trucks/list/ （販売車両）
 素材: Google Drive「HP画像」（`meetings/2026-11-17.md` 参照）
 GitHub: https://github.com/hkazushi/yonekawa-jikou （**Public**。2026-11-17 にユーザーが作成し、反映を指示）
-**確認用（Vercel）**: https://yonekawa-jikou-nine.vercel.app （Vercel の `hkazushi's projects`／プロジェクト名 `yonekawa-jikou`。2026-11-17 作成）。`main` への push で自動デプロイ。noindex。**管理画面はパスワード無しで、保存した内容は全員に反映される**（Vercel Blob の `yonekawa-jikou-blob` に保存。2026-11-17 の指示「現状は Vercel 内、今後はレンタルサーバー」）
+**確認用（Vercel）**: https://yonekawa-jikou-nine.vercel.app （Vercel の `hkazushi's projects`／プロジェクト名 `yonekawa-jikou`。2026-11-17 作成）。`main` への push で自動デプロイ。noindex。**管理画面はパスワード無しで、保存した内容は全員に反映される**（フォームの送信内容も同じ。確認用のフォームには「実際のお客様の情報は入力しないでください」と出している。Vercel Blob の `yonekawa-jikou-blob` に保存。2026-11-17 の指示「現状は Vercel 内、今後はレンタルサーバー」）
 
 ## 技術構成
 
 - 公開先は**レンタルサーバー想定（未定）**。条件は PHP 7.4 以上（`mbstring` 有効）と Apache 2.4 互換の `.htaccess`
 - 画面: Next.js（App Router）+ **JavaScript** の**静的エクスポート**（`output: 'export'` / `trailingSlash: true`）
-- 投稿・ログイン: **PHP**（`public/api/`）。**データベースは使わない**。フォーム（お問合せ・買取見積り）は**無い**（電話導線のみ。要否は発注者に確認中）
+- 投稿・ログイン・フォーム: **PHP**（`public/api/`）。**データベースは使わない**
+- **フォームは2つ**（`/estimate` 買取見積り、`/contact` お問合せ。項目は現HPと同じ。2026-11-17 追加）。送信内容は `yj-data/inquiries.json` に保存され、管理画面の「お問合せ」タブで見る。添付の車の写真（3枚まで）は `yj-data/inquiry-uploads/` に置き、**ログインした人にだけ**配信する（`image.php?i=`）。`config.php` に `notify_to` と `mail_from` を入れると通知メールも送る（**送信先アドレスは未定**。決まったら入れる）
 - 保存先: 公開フォルダの外の `yj-data/`（`public_html` の隣）。デプロイで上書きしても消えない
 - ログイン: `yj-data/config.php` の1アカウント + PHP セッション
 - **確認段階はパスワード無し**（2026-11-17 の指示）: `yj-data/config.php` の `'open_login' => true` で、ログイン画面が「パスワードなしで入る」ボタンだけになる。**本番公開の前に必ず `false` に戻す**（誰でも投稿・削除できてしまう）。ローカルの `yj-data/config.php` は `true` にしてある
@@ -27,8 +28,9 @@ GitHub: https://github.com/hkazushi/yonekawa-jikou （**Public**。2026-11-17 �
 | `app/lib/api.js` | API の呼び出し。本番は `/api/index.php`（PHP）、確認用は `/api/store/`（Vercel） |
 | `api/store.js` `api/_logic.js` | 確認用（Vercel）の保存 API。`_logic.js` が中身（PHP と同じ検証）、`store.js` が Vercel Blob への読み書き |
 | `app/components/Posts.js` | 販売車両・スタッフ・新着情報の読み込み（ブラウザから API を呼ぶ） |
-| `app/(site)/` | 公開ページ（`/` `/company` `/service` `/fleet` `/staff` `/vehicles` `/vehicles/detail/?id=` `/news` `/news/detail/?id=`）。アクセスはトップ内（`/#access`）、様式ダウンロードは会社概要内 |
-| `app/admin/` | 管理画面。`PostForm.js` が3種類のフォーム、`Photos.js` が写真の追加・並べ替え。権限チェックは PHP 側で毎回行う |
+| `app/(site)/` | 公開ページ（`/` `/company` `/service` `/fleet` `/staff` `/vehicles` `/vehicles/detail/?id=` `/news` `/news/detail/?id=` `/estimate` `/contact`）。アクセスはトップ内（`/#access`）、様式ダウンロードは会社概要内 |
+| `app/components/InquiryForm.js` | 買取見積り・お問合せフォーム（1つの部品で2種類）。項目名は `app/lib/inquiry.js`、`lib.php` の `inquiry_labels`、`api/_logic.js` の3か所で揃える |
+| `app/admin/` | 管理画面。`PostForm.js` が3種類のフォーム、`Photos.js` が写真の追加・並べ替え、`inquiries/` がフォームの受付一覧（未読バッジ・既読・削除）。権限チェックは PHP 側で毎回行う |
 | `public/api/index.php` | API 本体（`?action=`） |
 | `public/api/lib.php` | 保存（ファイルロック + rename）、セッション、回数制限、初回のテスト投稿 |
 | `public/api/image.php` | `yj-data/uploads/` の画像を配信 |
@@ -91,9 +93,10 @@ docker run --rm php:8.3-cli php -r 'echo password_hash("ここにパスワード
 - 色は `:root` の変数のみ。**白 / 黒（`--ink`）/ 赤（`--red`）**。黒地の上の赤い文字は `#ff5560`（`--red` だと暗くて読めない）。角丸・影は公開側で使わない
 - インパクトの出し方は3つに絞る: **大きな斜体の英字**（Barlow Condensed 800 italic。見出し・番号・電話番号）、**斜めの赤**（ヘッダーの電話、バナー、下層の見出し、見出し前の斜線）、**全画面の動画**。これ以外の飾りは足さない
 - 動画下のバナー（`.stock-banner`）は**動かす**（2026-11-17「固定でベタ貼りなので、アニメーションで少し目立たせたい」）: 光が斜めに走る、写真がゆっくり寄る、矢印の丸が脈打つ。トップの「SCROLL」表示は不要と言われて削除済み。戻さない
+- フォームへの導線: ヘッダーの「買取見積り」ボタン、各ページ下の電話の帯、フッター、販売車両の詳細（車両名を入れてお問合せフォームへ）。**Instagram の帯**（`InstaBand`）は全ページのフッター前。どちらも現HPにあったもので、依頼文には無かったが 2026-11-17 にユーザーの指示で追加
 - 日本語は Zen Kaku Gothic New。英字・数字は `.en`
 - ヘッダーは黒地。トップだけ、動画の上では透明（`Header.js` の `clear`）
-- **米川自工にロゴマークは無い**（2026-11-17 にユーザーが確認。現HPも文字だけ）。赤い平行四辺形の「Y」＋「YONEKAWA JIKOU」（社屋の表記）を文字で組んだものをロゴとして使う（`Parts.js` の `Logo`）。他社（参考サイトのフロンティア等）のロゴを流用しない
+- **米川自工にロゴマークは無い**（2026-11-17 にユーザーが確認。現HPも文字だけ）。最初は赤い「Y」＋「YONEKAWA JIKOU」で組んだが、**「ロゴ風のYはいらない。会社名を分かりやすく」と言われて、「全国トラック買取販売店／株式会社 米川自工」の文字組みに変更**（`Parts.js` の `Logo`）。英字やマークを主役に戻さない。他社（参考サイトのフロンティア等）のロゴを流用しない
 - 参考サイトから取り入れた構成: トップは frontierx（全画面動画 → バナー → 会社紹介 → 写真が並ぶ業務内容）、販売車両の詳細は栗山自動車（写真 → 詳細情報 → 文章）、保有車両は現HP（2列・名前の帯 + 大きい写真）
 - トップの動画 `public/video/hero.mp4` は IMG_8819 / 0697 / 0712 / 0581 の「車が近い場面」だけを切り出してつないだもの（18秒・音なし）。作り直すときの切り出し位置は `notes/content-sources.md`
 - 写真の出典と使い所は `notes/content-sources.md`
@@ -108,6 +111,7 @@ docker run --rm php:8.3-cli php -r 'echo password_hash("ここにパスワード
 - **ヘッドレス Chrome で撮ると栗山自動車は 403、`.reveal` の要素が写らないことがある（2026-11-17）**: 前者は CloudFront がヘッドレスを弾くので、実ブラウザ（Claude in Chrome）で見る。後者は撮影上の問題で、実ブラウザでは表示される。コードの不具合と決めつけず Browser pane で `opacity` を確認する
 - **Vercel の作成が途中で止まる／URL が想像と違う（2026-11-17）**: Vercel MCP は別チーム（higashiyana's projects）につながっていて、山﨑工業などがある `hkazushi's projects` は操作できない。Chrome で `vercel.com/new/import?s=<GitHubのURL>` を開いて Deploy を押す。押すと2段階認証の6桁コードを求められるので、そこはユーザーに入力してもらう。`yonekawa-jikou.vercel.app` は他人が取得済みで、割り当ては `yonekawa-jikou-nine.vercel.app` になった。URL は推測せずダッシュボードで確認する
 - **Vercel Blob を同じ名前で上書きすると、保存直後に古い内容が返る（2026-11-17）**: `put(..., { allowOverwrite: true })` で `data/posts.json` を上書きし `get(..., { useCache: false })` で読む作りにしたら、保存の数秒後まで古い内容が返り、続けて3回保存して1件しか残らなかった（読んで→足して→書く、の元データが古いため）。**保存のたびに新しい名前のファイル（`data/posts-<時刻>-<乱数>.json`）を作り、`list()` で一番新しいものを読む**方式に直した。`list()` は保存直後から最新を返す。上書き方式に戻さない
+- **保存ファイルの新旧が入れ替わる（2026-11-17）**: 版の名前を時刻（ミリ秒）だけで並べると、同じミリ秒の保存は乱数の部分で順が決まり、古い版を読むことがある。`writeDoc` は必ず「直前の版の時刻+1 以上」の名前を付ける
 - **`vercel.json` の `trailingSlash: true` で `/api/store` が 308 転送される（2026-11-17）**: 画面からは最初から `/api/store/` を呼ぶ
 - **`@vercel/blob` を入れると `npm audit` が high を4件出す（2026-11-17）**: 間接依存の `zod` が古い。`package.json` の `overrides` で `zod ^4.6.6` に固定して 0 件にしている。外さない
 - **zsh で `echo "$JSON"` すると `\n` が改行に化けて JSON が壊れる／`for x in $VAR` が分割されない（2026-11-17）**: API の応答は変数に入れず、`curl ... | python3 -c` に直接つなぐ。ID の列は `| while read id` で回す

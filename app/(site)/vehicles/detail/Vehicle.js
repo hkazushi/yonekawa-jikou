@@ -76,6 +76,11 @@ export default function Vehicle() {
         <strong className="en">{company.freeDial}</strong>
         <small>営業時間 {company.hours}</small>
       </a>
+      <p className="vehicle-ask">
+        <Link className="btn" href={`/contact/?about=${encodeURIComponent(post.title)}`}>
+          この車両についてフォームで問い合わせる
+        </Link>
+      </p>
       {back}
     </>
   );

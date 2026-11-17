@@ -46,6 +46,10 @@ export default function Header() {
               </li>
             ))}
           </ul>
+          <Link className="head-cta" href="/estimate/">
+            <small>無料査定</small>
+            買取見積り
+          </Link>
           <a className="head-tel" href={`tel:${company.freeDial}`}>
             <strong className="en">{company.freeDial}</strong>
             <small>{company.hours}</small>
@@ -82,6 +86,12 @@ export default function Header() {
               </Link>
             </li>
           </ul>
+          <Link className="btn light" href="/estimate/">
+            買取見積りフォーム
+          </Link>
+          <Link className="btn light" href="/contact/">
+            お問合せフォーム
+          </Link>
           <a className="btn red" href={`tel:${company.freeDial}`}>
             <span>
               <span className="en">{company.freeDial}</span>

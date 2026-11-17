@@ -3,15 +3,14 @@ import { company } from '@/app/lib/content';
 
 export const formatDate = (d) => String(d).replaceAll('-', '.');
 
-// 米川自工にロゴマークは無い（2026-11-17 確認）ので、文字と図形で組んでいる
+// 米川自工にロゴマークは無い（2026-11-17 確認）。会社名を大きく読ませる文字組みにしている
 export function Logo() {
   return (
     <span className="logo">
-      <i aria-hidden="true">Y</i>
-      <span>
-        <b className="en">YONEKAWA JIKOU</b>
-        <small>{company.tagline}　{company.name}</small>
-      </span>
+      <small>{company.tagline}</small>
+      <strong>
+        <i>株式会社</i>米川自工
+      </strong>
     </span>
   );
 }
@@ -114,11 +113,39 @@ export function TelBand() {
           <p className="catch">見積無料・相談無料・査定無料</p>
           <p>査定に関するご要望・ご相談もどうぞお気軽に。</p>
         </div>
-        <a href={`tel:${company.freeDial}`}>
-          <span className="en">{company.freeDial}</span>
-          <small>営業時間 {company.hours}</small>
-        </a>
+        <div className="tel-actions">
+          <a className="tel" href={`tel:${company.freeDial}`}>
+            <span className="en">{company.freeDial}</span>
+            <small>営業時間 {company.hours}</small>
+          </a>
+          <Link className="form-link" href="/estimate/">
+            買取見積りフォームはこちら
+            <Arrow />
+          </Link>
+        </div>
       </div>
     </section>
+  );
+}
+
+// 公式 Instagram への案内（現HPの「インスタグラムはじめました」バナーの後継）。全ページのフッター前に出す
+export function InstaBand() {
+  return (
+    <a className="insta-band" href={company.instagram} target="_blank" rel="noreferrer">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" />
+        <circle cx="12" cy="12" r="4.4" />
+        <circle cx="17.6" cy="6.4" r="1.1" className="dot" />
+      </svg>
+      <span className="en">INSTAGRAM</span>
+      <strong>
+        米川自工 公式インスタグラム
+        <small>@yonekawajikou　入庫車両や日々の様子を発信しています</small>
+      </strong>
+      <span className="follow">
+        フォローする
+        <Arrow />
+      </span>
+    </a>
   );
 }

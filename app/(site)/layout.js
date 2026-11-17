@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Header from '@/app/components/Header';
 import Motion from '@/app/components/Motion';
-import { Logo } from '@/app/components/Parts';
+import { InstaBand, Logo } from '@/app/components/Parts';
 import { company, nav, places } from '@/app/lib/content';
 
 export default function SiteLayout({ children }) {
@@ -10,6 +10,7 @@ export default function SiteLayout({ children }) {
       <Header />
       <Motion />
       {children}
+      <InstaBand />
       <footer className="site-footer">
         <div className="wrap">
           <div className="foot-main">
@@ -33,6 +34,8 @@ export default function SiteLayout({ children }) {
                 </Link>
               ))}
               <Link href="/#access">アクセス</Link>
+              <Link href="/estimate/">買取見積りフォーム</Link>
+              <Link href="/contact/">お問合せ</Link>
               <a href={company.instagram} target="_blank" rel="noreferrer">
                 Instagram
               </a>

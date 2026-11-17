@@ -6,35 +6,47 @@ const { handle, ApiError, MAX_UPLOAD } = require('./_logic');
 
 // 投稿データは「保存のたびに新しいファイル」を作り、一覧から一番新しいものを読む。
 // 同じファイルを上書きすると、保存直後の数秒間は古い内容が返ってきて、続けて保存した投稿が消える（2026-11-17 に実際に起きた）
-const PREFIX = 'data/posts-';
 const KEEP = 5;
 
-async function versions() {
-  const { blobs } = await list({ prefix: 'data/', limit: 1000 });
-  return blobs.filter((b) => b.pathname.startsWith(PREFIX)).sort((a, b) => b.pathname.localeCompare(a.pathname));
+// name は 'posts'（投稿）か 'inquiries'（フォームの受付）
+async function versions(name) {
+  const prefix = `data/${name}-`;
+  const { blobs } = await list({ prefix, limit: 1000 });
+  return blobs.sort((a, b) => b.pathname.localeCompare(a.pathname));
+}
+
+async function readDoc(name) {
+  const [latest] = await versions(name);
+  if (!latest) return null;
+  const res = await fetch(latest.url, { cache: 'no-store' });
+  if (!res.ok) throw new ApiError('データファイルを読み込めません。', 500);
+  const data = await res.json();
+  if (!Array.isArray(data)) throw new ApiError('データファイルを読み込めません。', 500);
+  return data;
+}
+
+async function writeDoc(name, data) {
+  // ファイル名は時刻順に並ぶようにする（13桁のミリ秒 + 重複よけ）。
+  // 直前の版と同じミリ秒になると新旧の順が乱数で決まってしまうので、必ず直前の版より後の時刻にする
+  const before = await versions(name);
+  const last = before[0] ? Number(before[0].pathname.slice(`data/${name}-`.length, `data/${name}-`.length + 13)) || 0 : 0;
+  const stamp = String(Math.max(Date.now(), last + 1)).padStart(13, '0');
+  const path = `data/${name}-${stamp}-${crypto.randomBytes(4).toString('hex')}.json`;
+  await put(path, JSON.stringify(data, null, 2), { access: 'public', contentType: 'application/json; charset=utf-8' });
+  // 古い版は直近の数件だけ残して消す（失敗しても保存は成立させる）
+  const old = before.slice(KEEP - 1).map((b) => b.url);
+  if (old.length) await del(old).catch(() => {});
 }
 
 const store = {
-  async readPosts() {
-    const [latest] = await versions();
-    if (!latest) return null;
-    const res = await fetch(latest.url, { cache: 'no-store' });
-    if (!res.ok) throw new ApiError('データファイルを読み込めません。', 500);
-    const data = await res.json();
-    if (!Array.isArray(data)) throw new ApiError('データファイルを読み込めません。', 500);
-    return data;
-  },
-  async writePosts(posts) {
-    // ファイル名は時刻順に並ぶようにする（13桁のミリ秒 + 重複よけ）
-    const name = `${PREFIX}${String(Date.now()).padStart(13, '0')}-${crypto.randomBytes(4).toString('hex')}.json`;
-    await put(name, JSON.stringify(posts, null, 2), { access: 'public', contentType: 'application/json; charset=utf-8' });
-    // 古い版は直近の数件だけ残して消す（失敗しても保存は成立させる）
-    const old = (await versions().catch(() => [])).slice(KEEP).map((b) => b.url);
-    if (old.length) await del(old).catch(() => {});
-  },
-  async putImage(buffer, name) {
+  readPosts: () => readDoc('posts'),
+  writePosts: (posts) => writeDoc('posts', posts),
+  readInquiries: () => readDoc('inquiries'),
+  writeInquiries: (list) => writeDoc('inquiries', list),
+  // folder は 'uploads'（投稿の写真）か 'inquiries'（フォームに添付された写真）
+  async putImage(buffer, name, folder = 'uploads') {
     const ext = name.split('.').pop();
-    const { url } = await put(`uploads/${name}`, buffer, {
+    const { url } = await put(`${folder}/${name}`, buffer, {
       access: 'public',
       contentType: { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[ext],
     });
@@ -76,7 +88,7 @@ module.exports = async (req, res) => {
       const origin = req.headers.origin;
       if (origin && new URL(origin).host !== req.headers.host) throw new ApiError('不正なリクエストです。', 403);
       const raw = await readBody(req);
-      body = query.action === 'upload' ? raw : JSON.parse(raw.toString('utf8') || '{}');
+      body = ['upload', 'inquiry_upload'].includes(query.action) ? raw : JSON.parse(raw.toString('utf8') || '{}');
     }
     const result = await handle({ action: query.action, method: req.method, query, body }, store);
     res.statusCode = 200;

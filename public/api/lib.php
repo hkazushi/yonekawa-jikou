@@ -32,6 +32,34 @@ function upload_dir(): string
     return $dir;
 }
 
+// 買取見積りフォームに添付された車の写真。個人情報に準じるので、管理画面にログインした人にだけ見せる
+function inquiry_dir(): string
+{
+    $dir = data_dir() . '/inquiry-uploads';
+    if (!is_dir($dir) && !@mkdir($dir, 0700, true)) {
+        fail('画像用フォルダを作成できません。', 500);
+    }
+    return $dir;
+}
+
+// 受け取ったファイルが画像か確かめて保存し、ファイル名を返す
+function save_uploaded_image(string $dir): string
+{
+    $file = $_FILES['file'] ?? null;
+    if (!$file || !is_uploaded_file($file['tmp_name'] ?? '') || ($file['error'] ?? 1) !== UPLOAD_ERR_OK) {
+        fail('画像を受け取れませんでした。');
+    }
+    if ($file['size'] > 8 * 1024 * 1024) fail('画像が大きすぎます。', 413);
+    $info = @getimagesize($file['tmp_name']);
+    $ext = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'][$info[2] ?? 0] ?? null;
+    if (!$ext) fail('JPEG / PNG / WebP の画像を選んでください。', 415);
+    $name = bin2hex(random_bytes(16)) . ".$ext";
+    if (!move_uploaded_file($file['tmp_name'], "$dir/$name")) {
+        fail('画像を保存できませんでした。', 500);
+    }
+    return $name;
+}
+
 function config(): array
 {
     static $config = null;
@@ -269,4 +297,52 @@ function json_body(): array
 {
     $body = json_decode((string) file_get_contents('php://input'), true);
     return is_array($body) ? $body : [];
+}
+
+// フォームの通知メール。config.php の notify_to と mail_from が両方あるときだけ送る。失敗しても受付は成立させる
+function notify_inquiry(array $row): void
+{
+    $to = config()['notify_to'] ?? '';
+    $from = config()['mail_from'] ?? '';
+    if ($to === '' || $from === '' || !function_exists('mb_send_mail')) {
+        return;
+    }
+    mb_language('uni');
+    mb_internal_encoding('UTF-8');
+    $oneLine = fn(string $s) => str_replace(["\r", "\n"], ' ', $s);
+    $kind = $row['kind'] === 'estimate' ? '買取見積り' : 'お問合せ';
+    $lines = ["ホームページの{$kind}フォームから送信がありました。", ''];
+    foreach (inquiry_labels($row['kind']) as $key => $label) {
+        $value = $key === 'year' ? inquiry_year($row) : (string) ($row[$key] ?? '');
+        if ($key === 'mileage' && $value !== '') $value = number_format((int) $value) . ' km';
+        if ($value !== '' && !in_array($key, ['era', 'month'], true)) {
+            $lines[] = "{$label}: {$value}";
+        }
+    }
+    if ($row['images']) {
+        $lines[] = '車の画像: ' . count($row['images']) . '枚（管理画面の「お問合せ」で確認できます）';
+    }
+    $headers = 'From: ' . $oneLine($from) . "\r\nReply-To: " . $oneLine($row['email']);
+    if (!@mb_send_mail($to, "【HP】{$kind}（" . $oneLine($row['name']) . '様）', implode("\n", $lines) . "\n", $headers)) {
+        error_log('yj: inquiry notify failed');
+    }
+}
+
+// フォームの項目と表示名。app/lib/inquiry.js と api/_logic.js と揃える
+function inquiry_labels(string $kind): array
+{
+    $common = ['name' => 'お名前', 'phone' => '電話番号', 'email' => 'メールアドレス'];
+    return $kind === 'estimate'
+        ? $common + [
+            'company' => '会社名', 'address' => '住所', 'reply' => '折り返し連絡方法', 'car' => '車種', 'maker' => 'メーカー',
+            'era' => '年式（年号）', 'year' => '年式', 'month' => '年式（月）', 'color' => 'カラー', 'mileage' => '走行距離',
+            'model' => '型式', 'mission' => 'オートマ／マニュアル', 'state' => '今の状態',
+        ]
+        : $common + ['message' => 'お問合せ内容'];
+}
+
+function inquiry_year(array $row): string
+{
+    if (($row['year'] ?? '') === '') return '';
+    return ($row['era'] ?? '') . $row['year'] . '年' . (($row['month'] ?? '') !== '' ? $row['month'] . '月' : '');
 }

@@ -40,6 +40,66 @@ if ($action === 'login_mode') {
     json_out(['open' => $openLogin]);
 }
 
+// 買取見積りフォームの写真（送信前に1枚ずつ受け取る）
+if ($action === 'inquiry_upload') {
+    require_same_origin_post();
+    $key = 'inquiry_upload:' . client_ip();
+    if (over_limit($key, 15, 600)) fail('送信が続いています。時間をおいて再度お試しください。', 429);
+    record_hit($key, 600);
+    json_out(['ref' => save_uploaded_image(inquiry_dir())]);
+}
+
+// 買取見積りフォーム・お問合せフォームの受付
+if ($action === 'contact') {
+    require_same_origin_post();
+    $in = json_body();
+    // ボット用の隠し項目。入っていたら保存せず成功に見せる
+    if (text($in['website'] ?? '') !== '') {
+        json_out(['ok' => true]);
+    }
+    $kind = ($in['kind'] ?? '') === 'estimate' ? 'estimate' : 'contact';
+    $row = ['kind' => $kind];
+    $limits = ['name' => 100, 'phone' => 30, 'email' => 200, 'company' => 200, 'address' => 300, 'car' => 100, 'maker' => 100,
+        'color' => 100, 'model' => 100, 'state' => 5000, 'message' => 5000, 'reply' => 20, 'era' => 10, 'mission' => 10];
+    foreach (array_keys(inquiry_labels($kind)) as $key) {
+        $value = text($in[$key] ?? '');
+        if (in_array($key, ['year', 'month', 'mileage'], true)) {
+            $value = str_replace([',', '，', ' ', '　'], '', function_exists('mb_convert_kana') ? mb_convert_kana($value, 'n', 'UTF-8') : $value);
+            if ($value !== '' && !preg_match('/^\d{1,9}$/', $value)) fail('年式・走行距離は半角数字で入力してください。');
+            $value = $value === '' ? '' : (string) (int) $value;
+        } elseif (str_length($value) > $limits[$key]) {
+            fail('入力内容が長すぎます。');
+        }
+        $row[$key] = $value;
+    }
+    if ($row['name'] === '') fail('お名前を入力してください。');
+    if ($row['phone'] === '') fail('電話番号を入力してください。');
+    if (!filter_var($row['email'], FILTER_VALIDATE_EMAIL)) fail('メールアドレスを正しく入力してください。');
+    $images = [];
+    if ($kind === 'estimate') {
+        if (!in_array($row['reply'], ['お電話', 'メールアドレス'], true)) fail('折り返し連絡方法を選択してください。');
+        if (!in_array($row['era'], ['', '令和', '平成', '昭和'], true) || !in_array($row['mission'], ['', 'AT', 'MT'], true)) fail('選択項目を選び直してください。');
+        if ($row['month'] !== '' && ((int) $row['month'] < 1 || (int) $row['month'] > 12)) fail('年式の月は1〜12で入力してください。');
+        foreach (array_slice((array) ($in['images'] ?? []), 0, 3) as $ref) {
+            if (is_string($ref) && preg_match('/^[a-f0-9]{32}\.(jpg|png|webp)$/', $ref) && is_file(inquiry_dir() . "/$ref")) {
+                $images[] = $ref;
+            }
+        }
+    } elseif ($row['message'] === '') {
+        fail('お問合せ内容を入力してください。');
+    }
+    $row['images'] = $images;
+    $key = 'contact:' . client_ip();
+    if (over_limit($key, 5, 600)) fail('送信が続いています。時間をおいて再度お試しください。', 429);
+    record_hit($key, 600);
+
+    update_json('inquiries', [], function (array &$list) use ($row) {
+        $list[] = $row + ['id' => bin2hex(random_bytes(16)), 'read' => false, 'created_at' => date('c')];
+    });
+    notify_inquiry($row);
+    json_out(['ok' => true]);
+}
+
 // ---- 管理 ----
 start_admin_session();
 
@@ -76,6 +136,49 @@ if ($action === 'logout') {
 require_admin();
 
 if ($action === 'me') {
+    $unread = count(array_filter(read_json('inquiries', []), fn($q) => !$q['read']));
+    json_out(['ok' => true, 'unread' => $unread]);
+}
+
+if ($action === 'inquiries') {
+    $list = read_json('inquiries', []);
+    usort($list, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
+    foreach ($list as $i => $q) {
+        $list[$i]['images'] = array_map(fn($name) => "/api/image.php?i=$name", $q['images'] ?? []);
+    }
+    json_out(['inquiries' => $list]);
+}
+
+if ($action === 'inquiry_read') {
+    require_same_origin_post();
+    $in = json_body();
+    update_json('inquiries', [], function (array &$list) use ($in) {
+        foreach ($list as $i => $q) {
+            if ($q['id'] === ($in['id'] ?? '')) {
+                $list[$i]['read'] = ($in['read'] ?? false) === true;
+            }
+        }
+    });
+    json_out(['ok' => true]);
+}
+
+if ($action === 'inquiry_delete') {
+    require_same_origin_post();
+    $id = json_body()['id'] ?? '';
+    $names = update_json('inquiries', [], function (array &$list) use ($id) {
+        foreach ($list as $i => $q) {
+            if ($q['id'] === $id) {
+                array_splice($list, $i, 1);
+                return $q['images'] ?? [];
+            }
+        }
+        return [];
+    });
+    foreach ($names as $name) {
+        if (is_string($name) && preg_match('/^[a-f0-9]{32}\.(jpg|png|webp)$/', $name)) {
+            @unlink(inquiry_dir() . "/$name");
+        }
+    }
     json_out(['ok' => true]);
 }
 
@@ -95,19 +198,7 @@ if ($action === 'admin_post') {
 
 if ($action === 'upload') {
     require_same_origin_post();
-    $file = $_FILES['file'] ?? null;
-    if (!$file || !is_uploaded_file($file['tmp_name'] ?? '') || ($file['error'] ?? 1) !== UPLOAD_ERR_OK) {
-        fail('画像を受け取れませんでした。');
-    }
-    if ($file['size'] > 8 * 1024 * 1024) fail('画像が大きすぎます。', 413);
-    $info = @getimagesize($file['tmp_name']);
-    $ext = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'][$info[2] ?? 0] ?? null;
-    if (!$ext) fail('JPEG / PNG / WebP の画像を選んでください。', 415);
-    $name = bin2hex(random_bytes(16)) . ".$ext";
-    if (!move_uploaded_file($file['tmp_name'], upload_dir() . "/$name")) {
-        fail('画像を保存できませんでした。', 500);
-    }
-    json_out(['url' => "/api/image.php?f=$name"]);
+    json_out(['url' => '/api/image.php?f=' . save_uploaded_image(upload_dir())]);
 }
 
 if ($action === 'save_post') {
