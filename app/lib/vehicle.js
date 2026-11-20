@@ -6,17 +6,28 @@ export const CHOICES = {
   fuel: ['軽油', 'ガソリン'],
 };
 
+// 車両販売価格の初期値。金額を載せる車両だけ、消して打ち替えてもらう（api 側の PRICE_ASK と揃える）
+export const PRICE_ASK = 'ご相談ください';
+
 export const emptyVehicle = {
   maker: '', name: '', body_type: '',
   size: '大型', year: '', mileage: '', model: '', engine: '', mission: 'AT',
   max_load: '', gross_weight: '', length: '', width: '', height: '',
-  shaken: 'あり', shaken_until: '', fuel: '軽油', recycle: '', sales_point: '',
+  shaken: 'あり', shaken_until: '', fuel: '軽油', recycle: '', price: PRICE_ASK, sales_point: '',
 };
 
 export const comma = (v) => (v === '' || v == null ? '' : Number(v).toLocaleString('ja-JP'));
 // 入力欄用: 全角数字を半角にして、数字以外を落とす
 export const digits = (v) =>
   String(v).replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)).replace(/\D/g, '').slice(0, 9);
+
+// 車両販売価格。文字はそのまま、数字だけなら「3,000,000円」にする。空は「ご相談ください」
+export function priceText(v) {
+  const s = String(v ?? '').trim();
+  if (s === '') return PRICE_ASK;
+  const n = s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)).replace(/[,，\s　¥￥円]/g, '');
+  return /^\d{1,12}$/.test(n) ? `${Number(n).toLocaleString('ja-JP')}円` : s;
+}
 
 const unit = (v, u) => (v === '' || v == null ? '' : `${comma(v)}${u}`);
 
@@ -40,5 +51,6 @@ export function specRows(d) {
     ['車検状態', d.shaken === 'あり' && d.shaken_until ? `あり（${d.shaken_until}）` : d.shaken],
     ['燃料', d.fuel],
     ['リサイクル券', d.recycle === '' || d.recycle == null ? '' : `¥${comma(d.recycle)}`],
+    ['車両販売価格', priceText(d.price)],
   ].map(([k, v]) => [k, v || '—']);
 }

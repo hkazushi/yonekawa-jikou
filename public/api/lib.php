@@ -148,13 +148,13 @@ function seed_posts(): array
         $post('sample-vehicle-1', 'vehicle', 'いすゞ・フォワード・アルミウイング', '2026-11-17', ['/img/photo-line-1.jpg', '/img/photo-line-2.jpg', '/img/photo-yard.jpg'], '', $vehicle('いすゞ', 'フォワード', 'アルミウイング', [
             'size' => '中型', 'year' => '2018', 'mileage' => '356000', 'model' => 'TKG-FRR90S2', 'engine' => '4HK1', 'mission' => 'MT',
             'max_load' => '2700', 'gross_weight' => '7990', 'length' => '858', 'width' => '249', 'height' => '343',
-            'shaken' => 'あり', 'shaken_until' => '令和9年3月まで', 'fuel' => '軽油', 'recycle' => '11170',
+            'shaken' => 'あり', 'shaken_until' => '令和9年3月まで', 'fuel' => '軽油', 'recycle' => '11170', 'price' => 'ご相談ください',
             'sales_point' => "※これはテスト投稿です。数値はすべて仮のものです。\n\n・写真は複数枚登録でき、スライドで表示されます\n・改行や　スペース、記号（★◎→）もそのまま表示されます",
         ])),
         $post('sample-vehicle-2', 'vehicle', '三菱ふそう・スーパーグレート・冷凍バン', '2026-11-10', ['/img/photo-line-3.jpg'], '', $vehicle('三菱ふそう', 'スーパーグレート', '冷凍バン', [
             'size' => '大型', 'year' => '2016', 'mileage' => '812000', 'model' => '', 'engine' => '', 'mission' => 'AT',
             'max_load' => '13200', 'gross_weight' => '24980', 'length' => '1199', 'width' => '249', 'height' => '379',
-            'shaken' => 'なし', 'shaken_until' => '', 'fuel' => '軽油', 'recycle' => '',
+            'shaken' => 'なし', 'shaken_until' => '', 'fuel' => '軽油', 'recycle' => '', 'price' => 'ご相談ください',
             'sales_point' => '※これはテスト投稿です（写真1枚の例）。',
         ])),
         $post('sample-staff-1', 'staff', 'スタッフ名（テスト投稿）', '2026-11-17', [], 'ここにメッセージが入ります。お名前・イラスト写真・メッセージの3つを登録できます。', [], 1),

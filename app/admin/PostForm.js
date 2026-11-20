@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { api } from '@/app/lib/api';
-import { CHOICES, comma, digits, emptyVehicle } from '@/app/lib/vehicle';
+import { CHOICES, PRICE_ASK, comma, digits, emptyVehicle } from '@/app/lib/vehicle';
 import Photos from './Photos';
 import { TYPES } from './types';
 
@@ -136,6 +136,13 @@ export default function PostForm({ post, type }) {
           )}
           <Choice label="燃料" name="fuel" value={v.fuel} onChange={set('fuel')} />
           <Num label="リサイクル券" value={v.recycle} onChange={set('recycle')} prefix="¥" />
+          <Text
+            label="車両販売価格"
+            value={v.price}
+            onChange={set('price')}
+            placeholder={PRICE_ASK}
+            note={`金額を載せる車両だけ、「${PRICE_ASK}」を消して「3,000,000円」のように入力してください。空のままにすると「${PRICE_ASK}」と表示されます。`}
+          />
           <label className="a-field">
             <span>セールスポイント</span>
             <textarea value={v.sales_point} onChange={(e) => set('sales_point')(e.target.value)} maxLength={5000} />

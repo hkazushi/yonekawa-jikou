@@ -12,7 +12,8 @@ const VEHICLE_CHOICES = [
     'fuel' => ['軽油', 'ガソリン'],
 ];
 const VEHICLE_NUMBERS = ['year', 'mileage', 'max_load', 'gross_weight', 'length', 'width', 'height', 'recycle'];
-const VEHICLE_TEXTS = ['model', 'engine', 'shaken_until'];
+const VEHICLE_TEXTS = ['model', 'engine', 'shaken_until', 'price'];
+const PRICE_ASK = 'ご相談ください'; // 車両販売価格が空のときの表示（app/lib/vehicle.js と揃える）
 
 $action = $_GET['action'] ?? '';
 
@@ -237,6 +238,7 @@ if ($action === 'save_post') {
             if (str_length($data[$key]) > 60) fail('入力内容が長すぎます。');
         }
         if ($data['shaken'] !== 'あり') $data['shaken_until'] = '';
+        if ($data['price'] === '') $data['price'] = PRICE_ASK;
         // セールスポイントは改行・スペースをそのまま残す（末尾の空白だけ落とす）
         $sp = is_string($d['sales_point'] ?? null) ? rtrim(str_replace("\r\n", "\n", $d['sales_point'])) : '';
         if (str_length($sp) > 5000) fail('セールスポイントが長すぎます。');

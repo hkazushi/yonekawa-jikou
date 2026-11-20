@@ -10,7 +10,8 @@ const CHOICES = {
   fuel: ['軽油', 'ガソリン'],
 };
 const NUMBERS = ['year', 'mileage', 'max_load', 'gross_weight', 'length', 'width', 'height', 'recycle'];
-const TEXTS = ['model', 'engine', 'shaken_until'];
+const TEXTS = ['model', 'engine', 'shaken_until', 'price'];
+const PRICE_ASK = 'ご相談ください'; // 車両販売価格が空のときの表示（app/lib/vehicle.js と揃える）
 const MAX_POSTS = 300;
 const MAX_UPLOAD = 4 * 1024 * 1024;
 const IMAGE_URL = /^(\/img\/[\w.-]+|https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/uploads\/[a-f0-9]{32}\.(jpg|png|webp))$/;
@@ -46,14 +47,14 @@ function seed() {
       maker: 'いすゞ', name: 'フォワード', body_type: 'アルミウイング',
       size: '中型', year: '2018', mileage: '356000', model: 'TKG-FRR90S2', engine: '4HK1', mission: 'MT',
       max_load: '2700', gross_weight: '7990', length: '858', width: '249', height: '343',
-      shaken: 'あり', shaken_until: '令和9年3月まで', fuel: '軽油', recycle: '11170',
+      shaken: 'あり', shaken_until: '令和9年3月まで', fuel: '軽油', recycle: '11170', price: PRICE_ASK,
       sales_point: '※これはテスト投稿です。数値はすべて仮のものです。\n\n・写真は複数枚登録でき、スライドで表示されます\n・改行や　スペース、記号（★◎→）もそのまま表示されます',
     }),
     post('sample-vehicle-2', 'vehicle', '三菱ふそう・スーパーグレート・冷凍バン', '2026-11-10', ['/img/photo-line-3.jpg'], '', {
       maker: '三菱ふそう', name: 'スーパーグレート', body_type: '冷凍バン',
       size: '大型', year: '2016', mileage: '812000', model: '', engine: '', mission: 'AT',
       max_load: '13200', gross_weight: '24980', length: '1199', width: '249', height: '379',
-      shaken: 'なし', shaken_until: '', fuel: '軽油', recycle: '',
+      shaken: 'なし', shaken_until: '', fuel: '軽油', recycle: '', price: PRICE_ASK,
       sales_point: '※これはテスト投稿です（写真1枚の例）。',
     }),
     post('sample-staff-1', 'staff', 'スタッフ名（テスト投稿）', '2026-11-17', [], 'ここにメッセージが入ります。お名前・イラスト写真・メッセージの3つを登録できます。', {}, 1),
@@ -128,6 +129,7 @@ function normalize(input) {
       if (len(data[key]) > 60) fail('入力内容が長すぎます。');
     }
     if (data.shaken !== 'あり') data.shaken_until = '';
+    if (data.price === '') data.price = PRICE_ASK;
     // セールスポイントは改行・スペースをそのまま残す（末尾の空白だけ落とす）
     const sp = typeof d.sales_point === 'string' ? d.sales_point.replace(/\r\n/g, '\n').trimEnd() : '';
     if (len(sp) > 5000) fail('セールスポイントが長すぎます。');
